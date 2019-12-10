@@ -1,2 +1,5 @@
 
 cargo run <inputfile>
+
+Python has a shapely library for all geometrical stuff
+
