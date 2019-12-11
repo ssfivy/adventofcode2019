@@ -1,126 +1,8 @@
 use std::fs;
 use std::env;
 
-fn get_opc(instruction: i32) -> u8 {
-    return (instruction % 100) as u8;
-}
+mod cpu;
 
-// note: param is 1-indexed
-fn get_pmode(instruction: i32, param: u8) -> u8 {
-    let mut insc: u32 = (instruction / 100) as u32;
-    for _dummy in 1..param {
-        insc /= 10;
-    }
-    return (insc % 10) as u8;
-}
-
-fn op01_sum(program: &mut [i32], pc: &mut usize ) {
-    let pm1 = get_pmode(program[*pc], 1);
-    let pm2 = get_pmode(program[*pc], 2);
-    let pm3 = get_pmode(program[*pc], 3);
-
-    let p1:i32 ;
-    let p2:i32 ;
-    match pm1 {
-        0 => p1 = program[program[*pc+1] as usize],
-        1 => p1 = program[*pc+1],
-        _ => { println!("incorrect pmode {} on location {}", pm1, *pc);
-            p1 = 0
-        }
-    }
-
-    match pm2 {
-        0 => p2 = program[program[*pc+2] as usize],
-        1 => p2 = program[*pc+2],
-        _ => { println!("incorrect pmode {} on location {}", pm1, *pc);
-            p2 = 0
-        }
-    }
-
-    //Parameters that an instruction writes to will never be in immediate mode.
-    assert!(pm3 != 1);
-
-    program[program[*pc+3] as usize] = p1 + p2;
-    *pc += 4;
-}
-
-fn op02_mul(program: &mut [i32], pc: &mut usize) {
-    let pm1 = get_pmode(program[*pc], 1);
-    let pm2 = get_pmode(program[*pc], 2);
-    let pm3 = get_pmode(program[*pc], 3);
-
-    let p1:i32 ;
-    let p2:i32 ;
-    match pm1 {
-        0 => p1 = program[program[*pc+1] as usize],
-        1 => p1 = program[*pc+1],
-        _ => { println!("incorrect pmode {} on location {}", pm1, *pc);
-            p1 = 0
-        }
-    }
-
-    match pm2 {
-        0 => p2 = program[program[*pc+2] as usize],
-        1 => p2 = program[*pc+2],
-        _ => { println!("incorrect pmode {} on location {}", pm1, *pc);
-            p2 = 0
-        }
-    }
-
-    //Parameters that an instruction writes to will never be in immediate mode.
-    assert!(pm3 != 1);
-
-    program[program[*pc+3] as usize] = p1 * p2;
-    *pc += 4;
-}
-
-fn op03_input(program: &mut [i32], pc: &mut usize) {
-    let pm1 = get_pmode(program[*pc], 1);
-    //Parameters that an instruction writes to will never be in immediate mode.
-    assert!(pm1 != 1);
-
-    // get input
-    // for now hardcode to 1
-    program[program[*pc+1] as usize] = 1; //FIXME: Take real input
-
-    *pc += 2;
-}
-
-fn op04_output(program: &mut [i32], pc: &mut usize) {
-    let pm1 = get_pmode(program[*pc], 1);
-    let p1:i32 ;
-    match pm1 {
-        0 => p1 = program[program[*pc+1] as usize],
-        1 => p1 = program[*pc+1],
-        _ => { println!("incorrect pmode {} on location {}", pm1, *pc);
-            p1 = 0
-        }
-    }
-    println!("{}", p1);
-    *pc += 2;
-}
-
-//change of mindset
-//call this function on a mutable intcode array / vector
-//and it will execute until finished.
-fn runprog (mut program: &mut [i32]) {
-    // start at location 0
-    let mut pc: usize = 0;
-
-    // loop until program finish
-    loop {
-        match get_opc(program[pc]) {
-            1  => op01_sum(&mut program, &mut pc),
-            2  => op02_mul(&mut program, &mut pc),
-            3  => op03_input(&mut program, &mut pc),
-            4  => op04_output(&mut program, &mut pc),
-            99 => break,
-            _  => { println!("Found incorrect opcode {} on location {}", program[pc], pc);
-                break
-            }
-        }
-    }
-}
 
 
 fn main() {
@@ -133,12 +15,10 @@ fn main() {
     let     out3: [i32; 6] = [2,4,4,5,99,9801];
     let mut in4: [i32; 9] = [1,1,1,4,99,5,6,0,99];
     let     out4: [i32; 9] = [30,1,1,4,2,5,6,0,99];
-
-    runprog(&mut in1);
-    runprog(&mut in2);
-    runprog(&mut in3);
-    runprog(&mut in4);
-
+    cpu::runprog(&mut in1);
+    cpu::runprog(&mut in2);
+    cpu::runprog(&mut in3);
+    cpu::runprog(&mut in4);
     assert!(in1 == out1);
     assert!(in2 == out2);
     assert!(in3 == out3);
@@ -146,8 +26,25 @@ fn main() {
 
     let mut in5: [i32; 5] = [1002,4,3,4,33];
     let     out5: [i32; 5] = [1002, 4, 3, 4, 99];
-    runprog(&mut in5);
+    cpu::runprog(&mut in5);
     assert!(in5 == out5);
+
+    let mut in6: [i32; 11] = [3,9,8,9,10,9,4,9,99,-1,8];
+    let mut in7: [i32; 11] = [3,9,7,9,10,9,4,9,99,-1,8];
+    let mut in8: [i32; 9] = [3,3,1108,-1,8,3,4,3,99];
+    let mut in9: [i32; 9] = [3,3,1107,-1,8,3,4,3,99];
+    let mut in10: [i32; 16] = [3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9];
+    let mut in11: [i32; 13] = [3,3,1105,-1,9,1101,0,0,12,4,12,99,1];
+    let mut in12: [i32; 47] = [3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99];
+    cpu::runprog(&mut in6);
+    cpu::runprog(&mut in7);
+    cpu::runprog(&mut in8);
+    cpu::runprog(&mut in9);
+    cpu::runprog(&mut in10);
+    cpu::runprog(&mut in11);
+    cpu::runprog(&mut in12);
 
     //println!("{:?}", in5);
 
@@ -167,5 +64,5 @@ fn main() {
     //println!("{:?}", input);
 
     let mut input1 = input_orig.clone();
-    runprog(&mut input1);
+    cpu::runprog(&mut input1);
 }
