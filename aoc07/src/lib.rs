@@ -73,19 +73,18 @@ fn op02_mul(program: &mut [i32], pc: &mut usize) {
     *pc += 4;
 }
 
-fn op03_input(program: &mut [i32], pc: &mut usize) {
+fn op03_input(program: &mut [i32], pc: &mut usize, input: &i32) {
     let pm1 = get_pmode(program[*pc], 1);
     //Parameters that an instruction writes to will never be in immediate mode.
     assert!(pm1 != 1);
 
     // get input
-    // for now hardcode to whatever we need everytime
-    program[program[*pc+1] as usize] = 5; //FIXME: Take real input
+    program[program[*pc+1] as usize] = *input;
 
     *pc += 2;
 }
 
-fn op04_output(program: &mut [i32], pc: &mut usize) {
+fn op04_output(program: &mut [i32], pc: &mut usize, output: &mut i32) {
     let pm1 = get_pmode(program[*pc], 1);
     let p1:i32 ;
     match pm1 {
@@ -95,7 +94,8 @@ fn op04_output(program: &mut [i32], pc: &mut usize) {
             p1 = 0
         }
     }
-    println!("{}", p1);
+    *output = p1;
+    //println!("{}", p1);
     *pc += 2;
 }
 
@@ -235,17 +235,21 @@ fn op08_eq(program: &mut [i32], pc: &mut usize ) {
 //change of mindset
 //call this function on a mutable intcode array / vector
 //and it will execute until finished.
-pub fn runprog (mut program: &mut [i32]) {
+pub fn runprog (mut program: &mut [i32], input: &[i32], mut output: &mut i32) {
     // start at location 0
     let mut pc: usize = 0;
+
+    let mut inputcount = 0;
 
     // loop until program finish
     loop {
         match get_opc(program[pc]) {
             1  => op01_sum(&mut program, &mut pc),
             2  => op02_mul(&mut program, &mut pc),
-            3  => op03_input(&mut program, &mut pc),
-            4  => op04_output(&mut program, &mut pc),
+            3  => { op03_input(&mut program, &mut pc, &input[inputcount]); 
+                inputcount += 1;
+            },
+            4  => op04_output(&mut program, &mut pc, &mut output),
             5  => op05_jumptrue(&mut program, &mut pc),
             6  => op06_jumpfalse(&mut program, &mut pc),
             7  => op07_lt(&mut program, &mut pc),
